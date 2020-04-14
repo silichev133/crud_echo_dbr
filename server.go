@@ -1,15 +1,17 @@
 package main
 
 import (
-	"github.com/gocraft/dbr/v2"
+	"net/http"
+
+	"github.com/gocraft/dbr"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	_ "github.com/lib/pq"
 )
 
 type User struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
+	Id   int    `db:"id" json:"id"`
+	Name string `db:"name" json:"name"`
 }
 
 type Users struct {
@@ -19,7 +21,7 @@ type Users struct {
 var (
 	usertable = "users"
 	seq       = 1
-	conn, err = dbr.Open("postgresql", "root:@tcp(localhost:5432)/test", nil)
+	conn, err = dbr.Open("postgres", "postgres:@tcp(localhost:5432)/test", nil)
 	sess      = conn.NewSession(nil)
 )
 
@@ -29,36 +31,39 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	e.GET("/employees", showAllEmployees)
-	//e.GET("/employee/:id", showEmployee)
-	//e.PUT("/employee/:id", updateEmployees)
-	e.POST("/employee", newEmployees)
-	//e.DELETE("/employee/:id", deleteEmployee)
+	e.GET("/users", showAllEmployees)
+	//e.GET("/user/:id", showEmployee)
+	//e.PUT("/user/:id", updateEmployees)
+	e.POST("/user", newEmployees)
+	//e.DELETE("/user/:id", deleteEmployee)
 
 	e.Logger.Fatal(e.Start(":9090"))
 }
 
 func showAllEmployees(c echo.Context) error {
-	//session begin
-	// if err != nil {
-	// 	panic(err.Error())
-	// }
-	// var users []User
-	// db.Find(&users)
-	// return c.JSON(http.StatusOK, users)
+	var users Users
+	sess.Select("*").From(usertable).Load(&users)
+	return c.JSON(http.StatusOK, users)
 }
 
+// func newEmployees(c echo.Context) error {
+// 	user := new(User)
+// 	if err := c.Bind(user); err != nil {
+// 		return err
+// 	}
+// 	sess.InsertInto(usertable).Columns("id", "name").Values(user.Id, user.Name).Exec()
+// 	return c.JSON(http.StatusCreated, user)
+// }
+
 func newEmployees(c echo.Context) error {
-	//session begin
-	// if err != nil {
-	// 	panic(err.Error())
-	// }
-
-	// user := new(User)
-	// if err := c.Bind(user); err != nil {
-	// 	return err
-	// }
-
-	// db.Create(&user)
-	// return c.String(http.StatusOK, "OK")
+	user := &User{
+		Id: seq,
+	}
+	if err := c.Bind(user); err != nil {
+		return err
+	}
+	//Users[u.Id] = u
+	sess.InsertInto(usertable).Columns("name").Values(user.Name).Exec()
+	seq++
+	return c.JSON(http.StatusCreated, user)
 }
